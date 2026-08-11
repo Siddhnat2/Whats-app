@@ -148,6 +148,23 @@ server.listen(config.PORT, config.HOST, () => {
   console.log(`  data dir    : ${config.DATA_DIR}`);
   console.log(`  auth        : ${config.ADMIN_PASSWORD ? 'password-protected' : 'OPEN (no ADMIN_PASSWORD set)'}`);
   console.log('');
+
+  // Auto-reconnect: if a WhatsApp session is already saved on the volume,
+  // start the engine on boot so the app comes back "connected" after a
+  // redeploy/restart without anyone having to click Connect again.
+  if (!config.MOCK) {
+    try {
+      const fs = require('fs');
+      const hasSession = fs.existsSync(config.AUTH_DIR) &&
+        fs.readdirSync(config.AUTH_DIR).some((n) => n.startsWith('session'));
+      if (hasSession) {
+        console.log('  saved session found — auto-reconnecting WhatsApp…\n');
+        engine.init().catch(() => {});
+      } else {
+        console.log('  no saved session — open the app and click Connect to link.\n');
+      }
+    } catch (_) { /* ignore */ }
+  }
 });
 
 // -------------------------------------------------------------- graceful stop
