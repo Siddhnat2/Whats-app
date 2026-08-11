@@ -140,8 +140,7 @@ class WhatsAppEngine extends EventEmitter {
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--no-first-run',
-        '--no-zygote',
-        '--single-process',
+
       ],
     };
     if (config.CHROMIUM_PATH) puppeteer.executablePath = config.CHROMIUM_PATH;
