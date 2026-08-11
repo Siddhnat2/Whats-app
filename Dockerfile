@@ -36,7 +36,7 @@ COPY . .
 
 # Persistent state (DB, WhatsApp session, uploads) lives here — mount a volume.
 RUN mkdir -p /data
-VOLUME ["/data"]
+
 
 EXPOSE 3000
 
