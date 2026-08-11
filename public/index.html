@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Campaign Studio</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E%F0%9F%92%AC%3C/text%3E%3C/svg%3E" />
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="app">
+    <!-- ============================================ sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">💬</div>
+        <div class="name">Campaign Studio<span>AskMyCFO</span></div>
+      </div>
+      <div class="nav-item active" data-page="dashboard"><span class="ico">📊</span> Dashboard</div>
+      <div class="nav-item" data-page="compose"><span class="ico">✉️</span> Compose</div>
+      <div class="nav-item" data-page="contacts"><span class="ico">👥</span> Contacts</div>
+      <div class="nav-item" data-page="templates"><span class="ico">📝</span> Templates</div>
+      <div class="nav-item" data-page="history"><span class="ico">🕑</span> History</div>
+      <div class="nav-item" data-page="connect"><span class="ico">🔗</span> Connect</div>
+      <div class="sidebar-foot">
+        <div class="conn-pill"><span class="dot off" id="sideDot"></span><span id="sideConn">Not connected</span></div>
+        <div class="nav-item" id="logoutBtn"><span class="ico">🚪</span> Sign out</div>
+      </div>
+    </aside>
+
+    <!-- ============================================ main -->
+    <main class="main">
+
+      <!-- ---------- Dashboard ---------- -->
+      <section class="page" data-page="dashboard">
+        <div class="page-head">
+          <div><h2>Dashboard</h2><div class="sub">Overview of your contacts and campaign performance.</div></div>
+          <button class="btn btn-primary" data-goto="compose">✉️ New campaign</button>
+        </div>
+        <div class="grid grid-4">
+          <div class="card stat"><div class="k">Contacts</div><div class="v" id="dashContacts">–</div><div class="small muted" id="dashValid"></div></div>
+          <div class="card stat"><div class="k">Messages sent</div><div class="v green" id="dashSent">–</div></div>
+          <div class="card stat"><div class="k">Not on WhatsApp</div><div class="v amber" id="dashNotReg">–</div></div>
+          <div class="card stat"><div class="k">Failed</div><div class="v red" id="dashFailed">–</div></div>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <h3>Connection</h3>
+          <div class="row" style="margin-top:8px">
+            <span class="dot off" id="dashDot"></span>
+            <span id="dashConnText">WhatsApp is not connected.</span>
+            <div class="spacer"></div>
+            <button class="btn" data-goto="connect">Manage connection</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Recent activity</h3>
+          <div id="dashRecent" class="muted small" style="margin-top:8px">No campaigns yet.</div>
+        </div>
+      </section>
+
+      <!-- ---------- Compose ---------- -->
+      <section class="page hidden" data-page="compose">
+        <div class="page-head">
+          <div><h2>Compose campaign</h2><div class="sub">Pick recipients, choose a template, attach files and send.</div></div>
+          <span id="composeStatus" class="badge neutral">Checking connection…</span>
+        </div>
+        <div class="compose-grid">
+          <div>
+            <div class="card">
+              <h3>1 · Message template</h3>
+              <select id="composeTemplate" style="margin:8px 0"></select>
+              <label class="field">Message preview (sample contact)</label>
+              <div class="preview-bubble" id="composePreview">—</div>
+            </div>
+            <div class="card">
+              <div class="row"><h3 style="margin:0">2 · Recipients</h3><div class="spacer"></div>
+                <input type="text" id="composeSearch" placeholder="Search…" style="width:180px" />
+                <button class="btn btn-sm" id="composeSelectAll">Select all</button>
+                <button class="btn btn-sm" id="composeSelectNone">Clear</button>
+              </div>
+              <div class="small muted" style="margin:8px 0" id="composeSelCount">0 selected</div>
+              <div class="table-wrap" style="max-height:320px;overflow-y:auto">
+                <table><thead><tr>
+                  <th class="checkcol"></th><th>Company</th><th>Name</th><th>Phone</th><th>Status</th>
+                </tr></thead><tbody id="composeContacts"></tbody></table>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <h3>3 · Attachments</h3>
+              <div class="small muted" style="margin-bottom:8px">Optional. Files apply to every recipient.</div>
+              <div id="composeAttachments"></div>
+              <div class="empty small" id="composeNoAttach" style="padding:14px">No files added. Add them in the Templates page.</div>
+            </div>
+            <div class="card">
+              <h3>4 · Pace</h3>
+              <div class="field-row" style="margin-top:8px">
+                <div><label class="field">Min delay (sec)</label><input type="number" id="composeMin" min="1" max="600" value="4" /></div>
+                <div><label class="field">Max delay (sec)</label><input type="number" id="composeMax" min="1" max="600" value="9" /></div>
+              </div>
+              <div class="small muted" style="margin-top:8px">Randomised gap between messages reduces ban risk.</div>
+            </div>
+            <div class="card">
+              <button class="btn btn-primary btn-block" id="composeSend">🚀 Send campaign</button>
+              <button class="btn btn-danger btn-block hidden" id="composeCancel" style="margin-top:8px">■ Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="composeProgress">
+          <div class="row"><h3 style="margin:0">Sending…</h3><div class="spacer"></div><span id="composeCounts" class="small muted"></span></div>
+          <div class="progress-outer" style="margin:12px 0"><div class="progress-inner" id="composeBar"></div></div>
+          <div class="log-box" id="composeLog"></div>
+        </div>
+      </section>
+
+      <!-- ---------- Contacts ---------- -->
+      <section class="page hidden" data-page="contacts">
+        <div class="page-head">
+          <div><h2>Contacts</h2><div class="sub" id="contactsSub">—</div></div>
+          <div class="row">
+            <button class="btn" id="contactsAddBtn">＋ Add contact</button>
+            <label class="btn btn-primary" for="contactsFile">⬆ Import Excel / CSV</label>
+            <input type="file" id="contactsFile" accept=".xlsx,.xlsm,.csv,.tsv,.txt" hidden />
+          </div>
+        </div>
+        <div class="card">
+          <div class="row wrap" style="margin-bottom:12px">
+            <input type="text" id="contactsSearch" placeholder="Search company, name, phone…" style="max-width:320px" />
+            <label class="row small muted"><input type="checkbox" id="contactsOnlyValid" style="width:auto" /> Valid only</label>
+            <div class="spacer"></div>
+            <button class="btn btn-sm" id="contactsDeleteSel" disabled>🗑 Delete selected</button>
+            <button class="btn btn-sm btn-ghost" id="contactsClear">Clear all</button>
+          </div>
+          <div class="table-wrap" style="max-height:60vh;overflow-y:auto">
+            <table><thead><tr>
+              <th class="checkcol"><input type="checkbox" id="contactsCheckAll" /></th>
+              <th>Company</th><th>Name</th><th>Designation</th><th>Phone</th><th>Status</th><th>Sent</th>
+            </tr></thead><tbody id="contactsBody"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Templates ---------- -->
+      <section class="page hidden" data-page="templates">
+        <div class="page-head">
+          <div><h2>Templates & attachments</h2><div class="sub">Reusable messages with personalisation variables, and shared files.</div></div>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="row"><h3 style="margin:0">Message templates</h3><div class="spacer"></div><button class="btn btn-sm btn-primary" id="tplNew">＋ New</button></div>
+            <div id="tplList" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <h3 id="tplEditorTitle">Editor</h3>
+            <label class="field" style="margin-top:8px">Template name</label>
+            <input type="text" id="tplName" placeholder="e.g. Intro offer" />
+            <label class="field" style="margin-top:12px">Message body</label>
+            <div id="tplChips" style="margin:6px 0"></div>
+            <textarea id="tplBody" placeholder="Hi {first_name}, ..."></textarea>
+            <label class="field" style="margin-top:12px">Preview</label>
+            <div class="preview-bubble" id="tplPreview">—</div>
+            <div class="row" style="margin-top:14px"><button class="btn btn-primary" id="tplSave">Save</button><button class="btn" id="tplDelete">Delete</button><div class="spacer"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row"><h3 style="margin:0">Shared attachments</h3><div class="spacer"></div>
+            <label class="btn btn-sm btn-primary" for="attachFile">⬆ Upload files</label>
+            <input type="file" id="attachFile" multiple hidden />
+          </div>
+          <div id="attachList" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <!-- ---------- History ---------- -->
+      <section class="page hidden" data-page="history">
+        <div class="page-head">
+          <div><h2>Send history</h2><div class="sub">Every message dispatched, with outcome.</div></div>
+          <button class="btn btn-ghost btn-sm" id="historyClear">Clear history</button>
+        </div>
+        <div class="grid grid-3" style="margin-bottom:16px">
+          <div class="card stat"><div class="k">Sent</div><div class="v green" id="histSent">–</div></div>
+          <div class="card stat"><div class="k">Not on WhatsApp</div><div class="v amber" id="histNotReg">–</div></div>
+          <div class="card stat"><div class="k">Failed</div><div class="v red" id="histFailed">–</div></div>
+        </div>
+        <div class="table-wrap" style="max-height:64vh;overflow-y:auto">
+          <table><thead><tr>
+            <th>When</th><th>Name</th><th>Phone</th><th>Template</th><th>Status</th><th>Files</th><th>Error</th>
+          </tr></thead><tbody id="historyBody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- ---------- Connect ---------- -->
+      <section class="page hidden" data-page="connect">
+        <div class="page-head">
+          <div><h2>Connect WhatsApp</h2><div class="sub">Link the WhatsApp account this app will send from.</div></div>
+        </div>
+        <div class="connect-grid">
+          <div class="card">
+            <div class="qr-box" id="qrBox">
+              <div>
+                <div class="muted">Click connect to start.</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3 id="connTitle">Not connected</h3>
+            <p class="muted" id="connDesc">Press <b>Connect</b>, then in WhatsApp on your phone go to
+              <b>Settings → Linked devices → Link a device</b> and scan the QR code.</p>
+            <div id="connInfo" class="small" style="margin:12px 0"></div>
+            <div class="row">
+              <button class="btn btn-primary" id="connConnect">🔗 Connect</button>
+              <button class="btn btn-danger hidden" id="connLogout">Unlink / Log out</button>
+            </div>
+            <hr class="sep" />
+            <h3>Sending defaults</h3>
+            <div class="field-row" style="margin-top:8px">
+              <div><label class="field">Min delay (sec)</label><input type="number" id="setMin" min="1" max="600" /></div>
+              <div><label class="field">Max delay (sec)</label><input type="number" id="setMax" min="1" max="600" /></div>
+            </div>
+            <label class="field" style="margin-top:12px">Daily cap (soft warning)</label>
+            <input type="number" id="setCap" min="1" max="5000" class="inline-num" style="width:120px" />
+            <div class="row" style="margin-top:14px"><button class="btn btn-primary" id="setSave">Save settings</button></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+  <div id="modalRoot"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
